@@ -1,0 +1,65 @@
+version: '3'
+services:
+  umihico:
+    container_name: umihico
+    build: ./php
+    command: "php-fpm"
+    volumes:
+      - ../umihi.co/:/var/www/umihi.co
+    restart: always
+  portfoliohub:
+    container_name: portfoliohub
+    build: ./php
+    command: "php-fpm"
+    volumes:
+      - ../portfoliohub.umihi.co/:/var/www/portfoliohub.umihi.co
+    working_dir: /var/www/portfoliohub.umihi.co/laravel
+    restart: always
+  books:
+    container_name: books
+    build: ./php
+    command: "php-fpm"
+    volumes:
+      - ../books.umihi.co/:/var/www/books.umihi.co
+    working_dir: /var/www/books.umihi.co
+    restart: always
+  nginx:
+    container_name: nginx
+    image: nginx:alpine
+    command: "nginx"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d/:/etc/nginx/conf.d
+      - ./nginx/sites-available/:/etc/nginx/sites-available
+      - ../umihi.co/:/var/www/umihi.co
+      - ../portfoliohub.umihi.co/:/var/www/portfoliohub.umihi.co
+      - ../books.umihi.co/:/var/www/books.umihi.co
+      - ./letsencrypt/:/etc/letsencrypt/live/umihi.co
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8001:8001"
+      - "8002:8002"
+      - "8003:8003"
+    depends_on:
+      - umihico
+      - portfoliohub
+      - books
+    entrypoint:
+      sh -c "nginx"
+  mysql:
+    container_name: mysql
+    image: mysql:5.7
+    env_file:
+      - ./mysql.env
+    entrypoint:
+      sh -c "
+        echo 'CREATE DATABASE IF NOT EXISTS umihico; CREATE DATABASE IF NOT EXISTS portfoliohub; CREATE DATABASE IF NOT EXISTS books;' > /docker-entrypoint-initdb.d/init.sql;
+        /usr/local/bin/docker-entrypoint.sh --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      "
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/:/var/lib/mysql
+    restart: always
